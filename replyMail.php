@@ -17,11 +17,20 @@ register_activation_hook(__FILE__, 'rmInitOptions');
 function rmInitOptions() {
     $email = get_option('admin_email');
     $name = get_option('blogname');
-    $options = array('email' => $email,
-                     'name' => $name,
-                     'subject' => "Someone on {$name} reply to your comment",
-                     'content' => '1');
-    add_option('rmOptions', $options,'' ,'no');
+    $content = <<<CONTENT
+{#oriCommentAuthor}:
+
+{#replyCommentAuthor} reply to your comment on {#post}. Below is the comment content:
+{#replyContent}
+
+And your original comment is:
+{#oriContent}
+CONTENT;
+    $options = array(0 => $email,
+                     1 => $name,
+                     2 => "Someone on '{$name}' reply to your comment",
+                     3 => $content);
+    add_option('rmOptions', $options);
 }
 
 // Check and format data
@@ -38,24 +47,24 @@ function rmCheckData($nameLength=100, $subjectLength=150) {
 }
 function rmCheckEmail($email) {
     $email = trim($email);
-    if (empty($email)) return array(false,__('Blank email address'));
-    if (isset($email[100])) return array(false,__('Email address not allow longer than 100 byte'));
+    if (empty($email)) return array(false,__('Blank email address', 'replymail'));
+    if (isset($email[100])) return array(false,__('Email address not allow longer than 100 byte', 'replymail'));
     $domain = substr($email, strpos($email, '@')+1);
-    if (isset($domain[61])) return array(false, __('Domain name not allow longer than 60 byte'));
+    if (isset($domain[61])) return array(false, __('Domain name not allow longer than 60 byte', 'replymail'));
     $pattern = "/^\w+([-_+.]\w+)*\@\w+(-\w+)*(\.\w+(-\w+)*)*\.[a-z]{2,4}$/is";
-    if (!preg_match($pattern, $email) || substr_count($email,'@') != 1) return array(false, __('Wrong email format'));
+    if (!preg_match($pattern, $email) || substr_count($email,'@') != 1) return array(false, __('Wrong email format', 'replymail'));
     return $email;
 }
 function rmCheckName($name, $length=100) {
     $name = trim($name);
     if (empty ($name)) return array(false, __('Blank name'));
-    $name = htmlentities($name, ENT_COMPAT, "UTF-8");
-    if (isset($name[$length])) return array(false, __("Name not allow longer than {$length} byte"));
+    $name = htmlspecialchars(stripslashes($name));
+    if (isset($name[$length])) return array(false, printf(__("Name not allow longer than %d byte", 'replymail'),$length));
     return $name;
 }
 function rmCheckContent($content) {
-    if (isset($content[5120])) return array(false, __('Content not allow longer than 5120 byte'));
-    $content = htmlspecialchars($content);
+    if (isset($content[5120])) return array(false, __('Content not allow longer than 5120 byte', 'replymail'));
+    $content = apply_filters('wp_filter_kses', $content);
     return $content;
 }
 
@@ -89,7 +98,7 @@ function rmSettingPage() {
             update_option('rmOptions', $options);
             unset($options);
 ?>
-<div class="updated"><p><strong><?php echo __('Options saved!');?></strong></p></div>
+<div class="updated"><p><strong><?php echo __('Options saved!', 'replymail');?></strong></p></div>
 <?php
         }else{
 ?>
@@ -103,34 +112,48 @@ function rmSettingPage() {
     <h2><?php echo __('replyMail Setting');?></h2>
     <form name="form1" method="post" action="<?php echo htmlentities(str_replace( '%7E', '~', $_SERVER['REQUEST_URI']),ENT_QUOTES,'UTF-8'); ?>">
         <fieldset>
-            <legend><?php echo __('Email From Information: ');?></legend>
+            <legend><?php echo __('Email From Information: ', 'replymail');?></legend>
             <ol>
               <li>
-                <label for="fromEmail"><?php echo __('Email: ');?></label>
+                <label for="fromEmail"><?php echo __('Email: ', 'replymail');?></label>
                 <input id="fromEmail" name="fromEmail" type="text" tabindex="1" class="textinput" value="<?php echo $options[0];?>" />
               </li>
               <li>
-                <label for="fromName"><?php echo __('From Name: ');?></label>
+                <label for="fromName"><?php echo __('From Name: ', 'replymail');?></label>
                 <input name="fromName" id="fromName" type="text" tabindex="2" class="textinput" value="<?php echo $options[1];?>" />
               </li>
             </ol>
         </fieldset>
         <fieldset>
-            <legend><?php echo __('Email Template Setting: ');?></legend>
+            <legend><?php echo __('Email Template Setting: ', 'replymail');?></legend>
             <ol>
               <li>
-                <label for="emailSubject"><?php echo __('Subject: ');?></label>
+                <label for="emailSubject"><?php echo __('Subject: ', 'replymail');?></label>
                 <input name="emailSubject" id="emailSubject" type="text" tabindex="3" class="textinput" value="<?php echo $options[2];?>" />
               </li>
               <li>
-                <label for="emailContent"><?php echo __('Email Content Template: ');?></label>
-                <textarea name="emailContent" id="emailContent" cols="60" rows="16" tabindex="4"><?php echo $options[3];?></textarea>
+                <label for="emailContent"><?php echo __('Email Content Template: ', 'replymail');?></label>
+                <textarea name="emailContent" id="emailContent" cols="60" rows="16" tabindex="4"><?php echo format_to_edit($options[3]);?></textarea>
+              </li>
+              <li>
+                <ul>
+                    <strong>Template Tags: </strong>
+                    <li><em>{#blogName}</em> - The name of this blog. ONLY for Subject.</li>
+                    <li><em>{#postTitle}</em> - The title of the comment post. ONLY for Subject.</li>
+                    <li><em>{#oriCommentAuthor}</em> - The parent commenter's name. Can use both for Subject and Email Content.</li>
+                    <li><em>{#replyCommentAuthor}</em> - The reply commenter,s name. Can use both for Subject and Email Content.</li>
+                    <li><em>{#blog}</em> - Clickable link for the blog. ONly for Email Content.</li>
+                    <li><em>{#post}</em> - Clickable link for the comment post. ONly for Email Content.</li>
+                    <li><em>{#replyContent}</em> - Reply comment content. ONly for Email Content.</li>
+                    <li><em>{#oriContent}</em> - Parent comment content. ONly for Email Content.</li>
+                    <li>Also, your can use these HTML tags: <?php echo allowed_tags();?></li>
+                </ul>
               </li>
             </ol>
         </fieldset>
         <fieldset class="submit">
             <input type="hidden" name="rmSubmitHidden" value="yes" />
-            <input name="sumbit" id="sumbit" type="submit" value="<?php echo __('Save Options');?>" tabindex="5" />
+            <input name="sumbit" id="sumbit" type="submit" value="<?php echo __('Save Options', 'replymail');?>" tabindex="5" />
         </fieldset>
     </form>
 </div>
@@ -149,9 +172,9 @@ function rmGetData($commentId) {
     // If comment not approved or do not have a parent comment,
     // return and exit.
     if ($comment->comment_approved == 'spam'){
-        return array(false, __('Not approved!'));
+        return array(false, __('Not approved!', 'replymail'));
     }elseif ($comment->comment_parent == '0'){
-        return array(false, __('No parent comment!'));
+        return array(false, __('No parent comment!', 'replymail'));
     }
     
     // Save child comment data to $renturnComment,
@@ -163,13 +186,12 @@ function rmGetData($commentId) {
                       'childCommentContent' => $comment->comment_content,
                       'childCommentParent' => $comment->comment_parent);
     unset ($comment);
-
     // Retrieves parent comment data
     $comment = get_comment($comments['childCommentParent']);
 
     //Reply to own comment, do not send mail.
     if ($comment->comment_author_email == $comments['childCommentAuthorEmail']){
-        return array(false,__('Reply to own comment'));
+        return array(false,__('Reply to own comment', 'replymail'));
     }
     
     $comments['parentCommentAuthor'] = $comment->comment_author;
@@ -209,7 +231,6 @@ function rmReplyMail($commentdata){
                   $options[2],
                   $options[3],
                   "From: \"{$options[1]}\" <{$options[0]}>\nContent-Type: text/html; charset=\"UTF-8\"\n");
-
 }
 
 function rmReplaceTemplate($commentdata, $options) {
@@ -237,18 +258,19 @@ function rmReplaceTemplate($commentdata, $options) {
                      3 => $commentdata['childCommentAuthor'],
                      4 => "<a href=\"{$postPermalink}\">{$postTitle}</a>",
                      5 => "<a href=\"{$blogURL}\">{$blogName}</a>",
-                     6 => $commentdata['parentCommentContent'],
-                     7 => $commentdata['childCommentContent']);
+                     6 => $commentdata['childCommentContent'],
+                     7 => $commentdata['parentCommentContent']);
 
     // Subject Template
+    $options[2] = str_replace('&quot;', "'", $options[2]);
+    $options[2] = str_replace('&ldquo;', '"', $options[2]);
     $options[2] = str_replace($pattern[0], $replace[0], $options[2]);
     $options[2] = str_replace($pattern[1], $replace[1], $options[2]);
     $options[2] = str_replace($pattern[2], $replace[2], $options[2]);
     $options[2] = str_replace($pattern[3], $replace[3], $options[2]);
 
     // Email Content Template
-    $options[3] = str_replace("\r\n", '<br />', $options[3]);
-    $options[3] = str_replace("\n", '<br />', $options[3]);
+    $options[3] = apply_filters('comment_text',$options[3]);
     $options[3] = str_replace($pattern[2], $replace[2], $options[3]);
     $options[3] = str_replace($pattern[3], $replace[3], $options[3]);
     $options[3] = str_replace($pattern[4], $replace[4], $options[3]);
@@ -259,4 +281,12 @@ function rmReplaceTemplate($commentdata, $options) {
     return $options;
 }
 add_action('comment_post', 'rmReplyMail', 500);
+/**
+ * TODO
+ * add a selectable languages options
+ */
+/*$locale = trim(get_option('rmLocale'));
+if (empty($locale)) $locale = 'default';
+$mofile = $pluginDir.'/lang/'.$locale.'.mo';
+load_textdomain('replymail', $mofile);*/
 ?>
