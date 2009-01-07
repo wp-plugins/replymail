@@ -5,7 +5,7 @@ Plugin URI: http://wanwp.com
 Description: Enhance the threaded comments system of WordPress 2.7.<br />
 When someone reply to your comment, send a email to you.
 Author: 冰古
-Version: 1.0
+Version: 1.0.1
 Author URI: http://bingu.net
 License: GNU General Public License 2.0 http://www.gnu.org/licenses/gpl.html
 */

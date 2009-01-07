@@ -4,7 +4,7 @@ Donate link:
 Tags: comments, threaded comments, mail, reply
 Requires at least: 2.7
 Tested up to: 2.7
-Stable tag: 1.01
+Stable tag: 1.0.1
 
 Enhance the threaded comments system of WordPress 2.7.
 When someone reply to your comment, send a email to you.
