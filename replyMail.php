@@ -4,7 +4,7 @@ Plugin Name: replyMail
 Plugin URI: http://wanwp.com/plugins/replymail/
 Description: Enhance the threaded comments system of WordPress 2.7. When someone reply to one's comment, send a email to him/her.
 Author: 冰古
-Version: 1.1.1
+Version: 1.1.2
 Author URI: http://bingu.net
 License: GNU General Public License 2.0 http://www.gnu.org/licenses/gpl.html
 */
@@ -12,7 +12,7 @@ License: GNU General Public License 2.0 http://www.gnu.org/licenses/gpl.html
 $pluginDir = dirname(__FILE__);
 
 // debug mode open?
-$rmDebug = false;
+$rmDebug = true;
 
 // init replyMail Options
 register_activation_hook(__FILE__, 'rmInitOptions');
@@ -20,12 +20,16 @@ function rmInitOptions() {
     $email = get_option('admin_email');
     $name = get_option('blogname');
     $content = <<<CONTENT
-{#oriCommentAuthor}:
+{#oriCommentAuthor},
 
-{#replyCommentAuthor} reply to your comment on {#post}. Below is the comment content:
+Hello, <strong>{#replyCommentAuthor}</strong> has replied to your comment at "<strong>{#post}</strong>".
+
+Here is the reply comment content:
+
 {#replyContent}
 
-And your original comment is:
+And here is your original comment content:
+
 {#oriContent}
 CONTENT;
     $options = array(0 => $email,
@@ -160,6 +164,15 @@ function rmReplyMail($commentdata){
     }
 }
 
+/**
+ * Replace template tags to HTML tags.
+ *
+ * @global object $wpdb
+ * @param array $comments
+ * @param array $options
+ * @param int $commentdata
+ * @return array
+ */
 function rmReplaceTemplate($comments, $options,$commentdata) {
     global $wpdb;
     // Retrieves the post/page's "title" & "permalink".
@@ -214,6 +227,36 @@ function rmReplaceTemplate($comments, $options,$commentdata) {
     return $options;
 }
 
+/**
+ * Add a setting submenu page
+ */
+function rmAddSettingPage() {
+    add_options_page('replyMail', 'replyMail Setting', 9, __FILE__, 'rmSettingPage');
+    add_filter('plugin_action_links', 'rmFilterPluginActions', 10, 2);
+}
+
+/**
+ * Add a quick setting link to plugin action
+ * http://striderweb.com/nerdaphernalia/2008/06/wp-use-action-links/
+ * 
+ * @staticvar string $this_plugin
+ * @param array $links
+ * @param string $file
+ * @return array
+ */
+function rmFilterPluginActions($links, $file) {
+	static $this_plugin;
+
+	if( !$this_plugin ) $this_plugin = plugin_basename(__FILE__);
+
+	if( $file == $this_plugin ) {
+		$settings_link = '<a href="options-general.php?page=replyMail/replyMail.php" style="color:blue;">' . __('Settings') . '</a>';
+		$links = array_merge( array($settings_link), $links); // before other links
+        // $links[] = ; // ... or after other links
+	}
+	return $links;
+}
+
 // Sent reply mail after comment saved.
 add_action('comment_post', 'rmReplyMail', 500);
 
@@ -221,9 +264,12 @@ add_action('comment_post', 'rmReplyMail', 500);
 require('settingPanel.php');
 add_action('admin_menu', 'rmAddSettingPage');
 add_action('admin_head', 'rmSettingCSS');
-function rmAddSettingPage() {
-    add_options_page('replyMail', 'replyMail Setting', 8, __FILE__, 'rmSettingPage');
-}
+add_action('admin_head', 'rmSettingJquery');
+/*if (is_admin()) {
+    wp_enqueue_script('jquery');
+	wp_enqueue_script('jquery-ui-core');
+    wp_enqueue_script('jquery-ui-tabs');
+}*/
 /**
  * TODO
  * add a selectable languages options
