@@ -48,6 +48,7 @@ function rmSettingPage() {
 <?php
     }
     $options = get_option('rmOptions');
+    rmSettingJquery();
 ?>
 <h2><?php _e('replyMail Setting');?></h2>
 <div id="rmWrap">

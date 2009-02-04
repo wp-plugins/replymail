@@ -4,7 +4,7 @@ Donate link: http://wanwp.com/plugins/replymail/
 Tags: comments, threaded comments, mail, reply, email, comment
 Requires at least: 2.7
 Tested up to: 2.7
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 
 Enhance the threaded comments system of WordPress 2.7.
 When someone reply to your comment, send a email to you.
@@ -14,18 +14,28 @@ When someone reply to your comment, send a email to you.
 **[ATTENTION]** WordPress version MUST up to 2.7
 Enhance the threaded comments system of WordPress 2.7.
 When someone reply to your comment, send a email to you.
+
 **Featrues**
+
 This plugin only have one aim: send a email to the comment author, notice him/her:
 'Someone has replied to your comment'.
 
 == Changlog ==
+
+**1.1.3**
+
+* Set default debug mode to 'close'.
+* Fix jQuery display.
+
 **1.1.2**
+
 * Make setting page more sexy.
 * Add a donate botton to setting page.
 * Add uninstall function, you can delete the options from database before you deactivate replyMail, and doing this will keep your database clean.
 * Add a shortcut in Plugin page, click it will take you to the setting page.
 
 **1.1.1**
+
 * Fix some bugs
 
 == Installation ==
