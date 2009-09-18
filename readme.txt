@@ -16,26 +16,30 @@ When someone reply to your comment, send a email to you.
 Enhance the threaded comments system of WordPress 2.7.
 When someone reply to your comment, send a email to you.
 
-== Changlog ==
+== Changelog ==
 
-**1.1.4**
+= 1.1.5 =
+
+* Fix a bug
+
+= 1.1.4 =
 
 * Add Template quicktag.
 * Add AJAX preview email subject and content.
 
-**1.1.3**
+= 1.1.3 =
 
 * Set default debug mode to 'close'.
 * Fix jQuery display.
 
-**1.1.2**
+= 1.1.2 =
 
 * Make setting page more sexy.
 * Add a donate botton to setting page.
 * Add uninstall function, you can delete the options from database before you deactivate replyMail, and doing this will keep your database clean.
 * Add a shortcut in Plugin page, click it will take you to the setting page.
 
-**1.1.1**
+= 1.1.1 =
 
 * Fix some bugs
 

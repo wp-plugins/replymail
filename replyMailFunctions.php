@@ -105,10 +105,10 @@ function rmReplyMail($commentdata){
  * @return array
  */
 function rmReplaceTemplate($comments, $options,$commentdata) {
-    global $wpdb;
+    global $wpdb, $table_prefix;
     // Retrieves the post/page's "title" & "permalink".
     $query = "SELECT `post_title`
-              FROM `{$table_prefix}wp_posts`
+              FROM `{$table_prefix}posts`
               WHERE ID = '".$comments['postID']."'";
     $postTitle = $wpdb->get_var($query);
     $postPermalink = get_permalink($comments['postID']). '#comment-' . $commentdata;
