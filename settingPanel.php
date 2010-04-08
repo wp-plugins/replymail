@@ -127,8 +127,8 @@ function rmSettingJquery() {
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.1/jquery.min.js" type="text/javascript"></script>
 <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.5.3/jquery-ui.min.js" type="text/javascript"></script>
 <script type="text/javascript">
-$(document).ready(function(){
-$("#rmWrap > ul").tabs();
+jQuery(document).ready(function(){
+jQuery("#rmWrap > ul").tabs();
 });
 
 jQuery(document).ready(function(){

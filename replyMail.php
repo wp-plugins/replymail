@@ -4,10 +4,12 @@ Plugin Name: replyMail
 Plugin URI: http://wanwp.com/plugins/replymail/
 Description: Enhance the threaded comments system of WordPress 2.7. When someone reply to one's comment, send a email to him/her. &lt;<a href="options-general.php?page=replymail/settingPanel.php"><strong style="color:blue">Go to Setting Page</strong></a>&gt;
 Author: 冰古
-Version: 1.1.5
+Version: 1.1.6
 Author URI: http://bingu.net
 License: GNU General Public License 2.0 http://www.gnu.org/licenses/gpl.html
 */
+
+define('REPLYMAIL_VERSION', '1.1.6');
 
 /**
  * check version
@@ -60,3 +62,6 @@ if (substr($wp_version, 0, 3) < 2.7){
         add_action('admin_head', 'rmSettingCSS');
     }
 }
+
+/* EOF replyMail.php */
+/* ./wp-content/plugins/replymail/replyMail.php */

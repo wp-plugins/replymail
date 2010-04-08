@@ -12,11 +12,20 @@
  */
 function rmGetData($commentdata) {
     // Retrieves child comment data
+    global $comment_approved;
     global $comment_post_ID;
     global $comment_author;
     global $comment_author_email;
     global $comment_content;
     global $comment_parent;
+
+    /*
+     * if comment not approved, do not send email.
+     */
+    if (1 != $comment_approved) {
+        $info = __('You comment is not approved now, not sending the notification email.', 'replymail');
+        return array(false, 0, $info);
+    }
 
     // If comment do not have a parent comment,
     // return and exit.
@@ -26,7 +35,8 @@ function rmGetData($commentdata) {
     }
 
     // Save child comment data to $comments,
-    $comments = array('postID' => $comment_post_ID,
+    $comments = array(
+                      'postID' => $comment_post_ID,
                       'childCommentAuthor' => $comment_author,
                       'childCommentAuthorEmail' => $comment_author_email,
                       'childCommentContent' => $comment_content,
@@ -192,7 +202,7 @@ function rmCheckEmail($email) {
 }
 
 /**
- *
+ * 
  * @param <type> $name
  * @param <type> $length
  * @return <type>
@@ -206,12 +216,15 @@ function rmCheckName($name, $length=100) {
 }
 
 /**
- *
- * @param <type> $content
- * @return <type>
+ * Check and filter the email content.
+ * @param string $content
+ * @return string
  */
 function rmCheckContent($content) {
     if (isset($content[5120])) return array(false, __('Content not allow longer than 5120 byte', 'replymail'));
     $content = wp_filter_kses($content);
     return $content;
 }
+
+/* EOF replyMailFunctions.php */
+/* ./wp-content/plugins/replymail/replyMailFunctions.php */
