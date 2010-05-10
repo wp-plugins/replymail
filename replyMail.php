@@ -38,7 +38,7 @@ if (substr($wp_version, 0, 3) < 2.7){
     /**
      * open debug mode?
      */
-    $rmDebug = true;
+    $rmDebug = FALSE;
 
     /**
      * load replyMail general functions.
