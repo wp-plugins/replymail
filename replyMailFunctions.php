@@ -4,227 +4,177 @@
  */
 
 /**
- *
  * Retrieves child comment data and its parent comment data
  *
- * @param int $commentId child comment's ID
  * @return array
  */
-function rmGetData($commentdata) {
+function rm_get_data($comment_id) {
+    global $rm_error;
+
     // Retrieves child comment data
-    global $comment_approved;
-    global $comment_post_ID;
-    global $comment_author;
-    global $comment_author_email;
-    global $comment_content;
-    global $comment_parent;
-
-    /*
-     * if comment not approved, do not send email.
-     */
-    if (1 != $comment_approved) {
-        $info = __('You comment is not approved now, not sending the notification email.', 'replymail');
-        return array(false, 0, $info);
+    $comment = get_comment($comment_id);
+    
+    if ('1' != $comment->comment_approved) {
+        $rm_error = __('Comment not approved, do not send replymail', 'replymail');
+        rm_error($rm_error, $comment);
+        return;
     }
 
-    // If comment do not have a parent comment,
-    // return and exit.
-    if ($comment_parent == 0) {
-        $info = __('No parent comment, do not send mail.', 'replymail');
-        return array(false, 0, $info);
+    if ('' != $comment->comment_type) {
+        $rm_error = __('Reply to trackback or pingback, do not send replymail.', 'replymail');
+        rm_error($rm_error, $comment);
+        return;
     }
 
-    // Save child comment data to $comments,
-    $comments = array(
-                      'postID' => $comment_post_ID,
-                      'childCommentAuthor' => $comment_author,
-                      'childCommentAuthorEmail' => $comment_author_email,
-                      'childCommentContent' => $comment_content,
-                      'childCommentParent' => $comment_parent
-                );
-
-    // Retrieves parent comment data
-    $comment = get_comment($comments['childCommentParent']);
-
-    // Reply to own comment, do not send mail.
-    // Reply to blog user, do not send mail too.
-    if ($comment->comment_author_email == $comments['childCommentAuthorEmail']) {
-        $info = __('Reply to own comment, do not send mail.', 'replymail');
-        return array(false, 0, $info);
-    } elseif ($comment->user_id != 0) {
-        $info = __('Reply to blog user, do not send mail.', 'replymail');
-        return array(false, 0, $info);
+    if (0 == $comment->comment_parent) {
+        $rm_error = __('No parent comment found, do not send replymail', 'replymail');
+        rm_error($rm_error, $comment);
+        return;
     }
 
-    $comments['parentCommentAuthor'] = $comment->comment_author;
-    $comments['parentCommentAuthorEmail'] = $comment->comment_author_email;
-    $comments['parentCommentContent'] = $comment->comment_content;
+    $comment_parent = get_comment($comment->comment_parent);
 
-    unset ($comment);
-    return $comments;
+    return $data = array (
+        'childcomment' => (array)$comment,
+        'parentcomment' => (array)$comment_parent
+        );
+
 }
 
 /**
- * Send mail
- * @param <type> $to
- * @param <type> $subject
- * @param <type> $content
- * @param <type> $header
- */
-function rmSendingMail($to, $subject, $content, $header){
-    wp_mail($to, $subject, $content, $header);
-}
-
-/**
- * send reply mail
+ * send replymail
  *
  * @uses $wpdb
  *
- * @param int $commentdata contain comment ID
+ * @param int $commentdata comment ID
  * @return
  */
-function rmReplyMail($commentdata){
-    global $rmDebug;
-    $comments = rmGetData($commentdata);
-    if ($comments[0]===false){
-        $err = $comments[1];
-    }else{
-        $options = get_option('rmOptions');
-        $options = rmReplaceTemplate($comments, $options, $commentdata);
-        rmSendingMail($comments['parentCommentAuthorEmail'],
-                      $options[2],
-                      $options[3],
-                      "From: \"{$options[1]}\" <{$options[0]}>\nContent-Type: text/html; charset=\"UTF-8\"\nX-Plugin: replyMail 1.1.4\n");
+function rmReplyMail($comment_id){
+    // Get the options and the child & parent comments data
+    $options = get_option('rmOptions');    
+    $chi_par_comments = rm_get_data($comment_id);
+
+    // If the childcomment and the parentcomment have same author email
+    // exit, do not send replymail.
+    if ($chi_par_comments['childcomment']['comment_author_email']
+            == $chi_par_comments['parentcomment']['comment_author_email']){
+        $rm_error = __('Reply to own comment, do not send replymail', 'replymail');
+        rm_error($rm_error, $chi_par_comments);
+        return;
     }
-    if ($rmDebug){
-        var_dump($comments);
-        echo '<br />';
-        var_dump($options);
-        echo '<br /><a href="', get_comment_link($commentdata), '">Redirect to comment</a>';
-        exit();
+
+    // If reply to a blog register user and the send to user option is not checked
+    // exit, do not send replymail.
+    if (0 != $chi_par_comments['parentcomment']['user_ID']
+            || TRUE != $options[5]) {
+        $rm_error = __('Do not need to send replymail to blog registor user', 'replymail');
+        rm_error($rm_error, $chi_par_comments);
+        return;
     }
+
+    // Filter the email title and content, and convert them to HTML.
+    $replymail_title_content = rm_title_content($options, $chi_par_comments);
+
+    $from = 'From: ' . $options[1] . ' <' . $options[0] . '>' . "\n" .
+        'Content-Type: text/html; charset="UTF-8' . "\n" . 'X-Plugin2: replyMail 1.2.0' . "\n";
+
+    $sendcopy = $sendreplymail = 'ready';
+    if (TRUE == $options[4]) {
+        $sendcopy = wp_mail(
+                get_bloginfo('admin_email'),
+                'Replymail copy mail: ' . $replymail_title_content['title'],
+                'Here is the replymail copy mail: <br />' . $replymail_title_content['content'],
+                $from
+                );
+    }
+
+    $sendreplymail = wp_mail(
+            $chi_par_comments['parentcomment']['comment_author_email'],
+            $replymail_title_content['title'],
+            $replymail_title_content['content'],
+            $from
+            );
+
+    rm_error($chi_par_comments, $replymail_title_content, $options, $to, $from, $sendcopy, $sendreplymail);
 }
 
-/**
- * Replace template tags to HTML tags.
- *
- * @global object $wpdb
- * @param array $comments
- * @param array $options
- * @param int $commentdata
- * @return array
- */
-function rmReplaceTemplate($comments, $options,$commentdata) {
+function rm_title_content($options, $chi_par_comments) {
     global $wpdb, $table_prefix;
-    // Retrieves the post/page's "title" & "permalink".
-    $query = "SELECT `post_title`
-              FROM `{$table_prefix}posts`
-              WHERE ID = '".$comments['postID']."'";
-    $postTitle = $wpdb->get_var($query);
-    $postPermalink = get_permalink($comments['postID']). '#comment-' . $commentdata;
 
-    // Retrieves the blog's "name" & "URL".
-    $blogName = get_bloginfo('name');
-    $blogURL = get_bloginfo('url');
+    // Retrieves the 'title' of current post.
+    $sql = "SELECT `post_title`
+        FROM `{$table_prefix}posts`
+        WHERE ID = '{$chi_par_comments['childcomment']['comment_post_ID']}'";
+    $post_title = $wpdb->get_var($sql);
+
+    // Retrieves the 'permalink' of current post.
+    $post_permalink = get_permalink($chi_par_comments['childcomment']['comment_post_ID']);
+    $post_permalink .= '#comment-' . $chi_par_comments['childcomment']['comment_ID'];
+
+    // Retrieves the 'name' of the blog.
+    $blog_name = get_bloginfo('name');
+
+    // Retrieves the 'url' of the blog.
+    $blog_url = get_bloginfo('url');
 
     // Available Template TAGS.
-    $pattern = array(0 => '{#blogName}',
-                     1 => '{#postTitle}',
-                     2 => '{#oriCommentAuthor}',
-                     3 => '{#replyCommentAuthor}',
-                     4 => '{#post}',
-                     5 => '{#blog}',
-                     6 => '{#oriContent}',
-                     7 => '{#replyContent}');
-    // End of Template TAGS.
+    $pattern = array(
+        'blogname' => '{#blogName}',
+        'posttitle' => '{#postTitle}',
+        'parentcommentauthor' => '{#oriCommentAuthor}',
+        'childcommentauthor' => '{#replyCommentAuthor}',
+        'postpermalink' => '{#post}',
+        'bloglink' => '{#blog}',
+        'parentcommentcontent' => '{#oriContent}',
+        'childcommentcontent' => '{#replyContent}'
+        );
 
-    $replace = array(0 => $blogName,
-                     1 => $postTitle,
-                     2 => $comments['parentCommentAuthor'],
-                     3 => $comments['childCommentAuthor'],
-                     4 => "<a href=\"{$postPermalink}\">{$postTitle}</a>",
-                     5 => "<a href=\"{$blogURL}\">{$blogName}</a>",
-                     6 => $comments['parentCommentContent'],
-                     7 => $comments['childCommentContent']);
+    $replace = array(
+        'blogname' => $blog_name,
+        'posttitle' => $post_title,
+        'parentcommentauthor' => $chi_par_comments['parentcomment']['comment_author'],
+        'childcommentauthor' => $chi_par_comments['childcomment']['comment_author'],
+        'postpermalink' => "<a href=\"{$post_permalink}\">{$post_title}</a>",
+        'bloglink' => "<a href=\"{$blog_url}\">{$blog_name}</a>",
+        'parentcommentcontent' => $chi_par_comments['parentcomment']['comment_content'],
+        'childcommentcontent' => $chi_par_comments['childcomment']['comment_content']
+                );
 
-    // Replace Subject Template TAGS to HTML tags.
-    // $options[2] = str_replace('&quot;', "'", $options[2]);
-    // $options[2] = str_replace('&ldquo;', '"', $options[2]);
-    $options[2] = stripslashes(apply_filters('the_title',$options[2]));
-    $options[2] = str_replace($pattern[0], $replace[0], $options[2]);
-    $options[2] = str_replace($pattern[1], $replace[1], $options[2]);
-    $options[2] = str_replace($pattern[2], $replace[2], $options[2]);
-    $options[2] = str_replace($pattern[3], $replace[3], $options[2]);
+    $title = stripslashes(apply_filters('the_title',$options[2]));
+    $title = str_replace($pattern['blogname'], $replace['blogname'], $title);
+    $title = str_replace($pattern['posttitle'], $replace['posttitle'], $title);
+    $title = str_replace($pattern['parentcommentauthor'], $replace['parentcommentauthor'], $title);
+    $title = str_replace($pattern['childcommentauthor'], $replace['childcommentauthor'], $title);
 
-    // Replace Email Content Template TAGS to HTML tags.
-    $options[3] = stripslashes(apply_filters('comment_text',$options[3]));
-    $options[3] = convert_smilies($options[3]);
-    $options[3] = str_replace($pattern[2], $replace[2], $options[3]);
-    $options[3] = str_replace($pattern[3], $replace[3], $options[3]);
-    $options[3] = str_replace($pattern[4], $replace[4], $options[3]);
-    $options[3] = str_replace($pattern[5], $replace[5], $options[3]);
-    $options[3] = str_replace($pattern[6], $replace[6], $options[3]);
-    $options[3] = str_replace($pattern[7], $replace[7], $options[3]);
+    $content = stripslashes(apply_filters('comment_text',$options[3]));
+    $content = convert_smilies($content);
+    $content = str_replace($pattern['parentcommentauthor'], $replace['parentcommentauthor'], $content);
+    $content = str_replace($pattern['childcommentauthor'], $replace['childcommentauthor'], $content);
+    $content = str_replace($pattern['postpermalink'], $replace['postpermalink'], $content);
+    $content = str_replace($pattern['bloglink'], $replace['bloglink'], $content);
+    $content = str_replace($pattern['parentcommentcontent'], $replace['parentcommentcontent'], $content);
+    $content = str_replace($pattern['childcommentcontent'], $replace['childcommentcontent'], $content);
 
-    return $options;
-}
-/**
- * 
- * @param <type> $nameLength
- * @param <type> $subjectLength
- * @return <type> 
- */
-function rmCheckData($nameLength=100, $subjectLength=150) {
-    $email = rmCheckEmail($_POST['fromEmail']);
-    if ($email[0]===false) return $email;
-    $name = rmCheckName($_POST['fromName'], $nameLength);
-    if ($name[0]===false) return $name;
-    $subject = rmCheckName($_POST['emailSubject'], $subjectLength);
-    if ($subject[0]===false) return $subject;
-    $content = rmCheckContent($_POST['emailContent']);
-    if ($content[0]===false) return $subject;
-    return array($email, $name, $subject, $content);
+    $title_content = array(
+        'title' => $title,
+        'content' => $content
+    );
+
+    return $title_content;
 }
 
-/**
- *
- * @param <type> $email
- * @return <type>
- */
-function rmCheckEmail($email) {
-    $email = trim($email);
-    if (empty($email)) return array(false,__('Blank email address', 'replymail'));
-    if (isset($email[100])) return array(false,__('Email address not allow longer than 100 byte', 'replymail'));
-    $domain = substr($email, strpos($email, '@')+1);
-    if (isset($domain[61])) return array(false, __('Domain name not allow longer than 60 byte', 'replymail'));
-    if (!is_email($email)) return array(false, __('Please fill in a real email'));
-    return $email;
-}
+function rm_error() {
+    global $rmDebug;
 
-/**
- * 
- * @param <type> $name
- * @param <type> $length
- * @return <type>
- */
-function rmCheckName($name, $length=100) {
-    $name = trim($name);
-    if (empty ($name)) return array(false, __('Blank name'));
-    $name = htmlspecialchars(stripslashes($name));
-    if (isset($name[$length])) return array(false, printf(__("Name not allow longer than %d byte", 'replymail'),$length));
-    return $name;
-}
+    $args_num = func_num_args();
 
-/**
- * Check and filter the email content.
- * @param string $content
- * @return string
- */
-function rmCheckContent($content) {
-    if (isset($content[5120])) return array(false, __('Content not allow longer than 5120 byte', 'replymail'));
-    $content = wp_filter_kses($content);
-    return $content;
-}
+    if (TRUE == $rmDebug && is_user_logged_in() && $args_num > 0) {
+        $error_list = func_get_args();
 
+        echo var_export($error_list, TRUE);
+        
+        exit ();
+    }
+}
 /* EOF replyMailFunctions.php */
 /* ./wp-content/plugins/replymail/replyMailFunctions.php */

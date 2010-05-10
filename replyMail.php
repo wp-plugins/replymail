@@ -4,15 +4,19 @@ Plugin Name: replyMail
 Plugin URI: http://wanwp.com/plugins/replymail/
 Description: Enhance the threaded comments system of WordPress 2.7. When someone reply to one's comment, send a email to him/her. &lt;<a href="options-general.php?page=replymail/settingPanel.php"><strong style="color:blue">Go to Setting Page</strong></a>&gt;
 Author: 冰古
-Version: 1.1.6
+Version: 1.2.0
 Author URI: http://bingu.net
 License: GNU General Public License 2.0 http://www.gnu.org/licenses/gpl.html
 */
 
-define('REPLYMAIL_VERSION', '1.1.6');
+define('REPLYMAIL_VERSION', '1.2.0');
+define('REPLYMAIL_BASEFOLDER', plugin_basename(dirname(__FILE__)));
+if (defined('WP_INC_URL')) {
+    define('WP_INC_URL', get_option('siteurl') . '/' . WPINC);
+}
 
 /**
- * check version
+ * check WordPress version, must 2.7+
  */
 global $wp_version;
 if (substr($wp_version, 0, 3) < 2.7){
@@ -24,17 +28,17 @@ if (substr($wp_version, 0, 3) < 2.7){
     /**
      * get replyMail plugin absolute dir.
      */
-    $pluginDir = WP_PLUGIN_DIR . '/replymail';
+    $pluginDir = WP_PLUGIN_DIR . '/' . REPLYMAIL_BASEFOLDER;
 
     /**
      * get replyMail plugin url
      */
-    $pluginUrl = get_bloginfo('wpurl') . '/wp-content/plugins/replymail';
+    $pluginUrl = WP_PLUGIN_URL . '/' . REPLYMAIL_BASEFOLDER;
     
     /**
      * open debug mode?
      */
-    $rmDebug = false;
+    $rmDebug = true;
 
     /**
      * load replyMail general functions.

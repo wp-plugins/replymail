@@ -3,8 +3,8 @@ Contributors: bingu
 Donate link: http://wanwp.com/plugins/replymail/
 Tags: comments, threaded comments, mail, reply, email, comment
 Requires at least: 2.7
-Tested up to: 2.9.2
-Stable tag: 1.1.6
+Tested up to: 3.0 beta 2
+Stable tag: 1.2.0
 
 Enhance the threaded comments system of WordPress 2.7.
 When someone reply to your comment, send a email to you.
@@ -17,6 +17,10 @@ Enhance the threaded comments system of WordPress 2.7.
 When someone reply to your comment, send a email to you.
 
 == Changelog ==
+= 1.2.0 =
+
+* Add two options: Whether send mail to blog user (When someone reply to them), Whether send a copy mail to blog admin (When someone reply to other)
+* Only send email when the comment is a approved comment.
 
 = 1.1.6 =
 

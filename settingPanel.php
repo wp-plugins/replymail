@@ -28,10 +28,17 @@ And here is your original comment content:
 <p>Powered by <a href="http://wordpress.org">WordPress</a> and <a href="http://wanwp.com/plugins/replymail/">replyMail</a></p>
 CONTENT;
 
+    $send_copy_email = FALSE;   // whether send a copy mail to admin's inbox.
+
+    $send_to_user = FALSE;      // whether send mail to the user of your blog.
+
     $options = array(0 => $email,
                      1 => $name,
                      2 => "Someone on '{$name}' reply to your comment",
-                     3 => $content);
+                     3 => $content,
+                     4 => $send_copy_email,
+                     5 => $send_to_user,
+                             );
 
     add_option('rmOptions', $options);
 }
@@ -162,6 +169,7 @@ function rmSettingPage() {
     // If submit, collecting options data
     // serialize them and update database
     if($_POST['rmSubmitHidden'] === 'yes') {
+
         $options = rmCheckData();
         if ($options[0]){
             update_option('rmOptions', $options);
@@ -241,11 +249,24 @@ function rmSettingPage() {
                   </li>
                 </ol>
             </fieldset>
+            <fieldset>
+                <legend><?php _e('Other: ', 'replymail');?></legend>
+                <ol>
+                    <li>
+                        <label for="sendCopyEmail"><?php _e('Send copy email?', 'replymail'); ?></label>
+                        <input name="sendCopyEmail" type="checkbox" tabindex="5"<?php if (true == $options[4]) echo ' checked="checked" '; ?>/>
+                    </li>
+                    <li>
+                        <label for="send2User"><?php _e('Send to user?', 'replymail');?></label>
+                        <input name="send2User" type="checkbox" tabindex="6" tabindex="6"<?php if (true == $options[5]) echo ' checked="checked" ';?>/>
+                    </li>
+                </ol>
+            </fieldset>
             <fieldset class="submit">
                 <input type="hidden" name="rmSubmitHidden" value="yes" />
-                <input name="submit" id="submit1" type="submit" value="<?php _e('Save Options', 'replymail');?>" tabindex="5" />
+                <input name="submit" id="submit1" type="submit" value="<?php _e('Save Options', 'replymail');?>" tabindex="7" />
                 <img src="<?php echo $pluginUrl?>/loading.gif" alt="" id="loading" style="display: none;" />
-                <input type="button" id="preview" value="<?php _e('Preview', 'replymail')?>" tabindex="6" />
+                <input type="button" id="preview" value="<?php _e('Preview', 'replymail')?>" tabindex="8" />
             </fieldset>
             <fieldset>
                 <legend><?php _e('Preview Box', 'replymail')?></legend>
@@ -279,3 +300,81 @@ function rmSettingPage() {
 </div>
 <?php
 }
+
+/**
+ *
+ * @param <type> $nameLength
+ * @param <type> $subjectLength
+ * @return <type>
+ */
+function rmCheckData($nameLength=100, $subjectLength=150) {
+    $email = rmCheckEmail($_POST['fromEmail']);
+    if ($email[0] === false)
+        return $email;
+
+    $name = rmCheckName($_POST['fromName'], $nameLength);
+    if ($name[0] === false)
+        return $name;
+
+    $subject = rmCheckName($_POST['emailSubject'], $subjectLength);
+    if ($subject[0] === false)
+        return $subject;
+
+    $content = rmCheckContent($_POST['emailContent']);
+    if ($content[0] === false)
+        return $subject;
+
+    if ('on' == $_POST['sendCopyEmail'])
+        $send_copy_email = true;
+    else
+        $send_copy_email = false;
+
+    if ('on' == $_POST['send2User'])
+        $send_to_user = true;
+    else
+        $send_to_user = false;
+
+    return array($email, $name, $subject, $content, $send_copy_email, $send_to_user);
+}
+
+/**
+ *
+ * @param <type> $email
+ * @return <type>
+ */
+function rmCheckEmail($email) {
+    $email = trim($email);
+    if (empty($email)) return array(false,__('Blank email address', 'replymail'));
+    if (isset($email[100])) return array(false,__('Email address not allow longer than 100 byte', 'replymail'));
+    $domain = substr($email, strpos($email, '@')+1);
+    if (isset($domain[61])) return array(false, __('Domain name not allow longer than 60 byte', 'replymail'));
+    if (!is_email($email)) return array(false, __('Please fill in a real email'));
+    return $email;
+}
+
+/**
+ *
+ * @param <type> $name
+ * @param <type> $length
+ * @return <type>
+ */
+function rmCheckName($name, $length=100) {
+    $name = trim($name);
+    if (empty ($name)) return array(false, __('Blank name'));
+    $name = htmlspecialchars(stripslashes($name));
+    if (isset($name[$length])) return array(false, printf(__("Name not allow longer than %d byte", 'replymail'),$length));
+    return $name;
+}
+
+/**
+ * Check and filter the email content.
+ * @param string $content
+ * @return string
+ */
+function rmCheckContent($content) {
+    if (isset($content[5120])) return array(false, __('Content not allow longer than 5120 byte', 'replymail'));
+    $content = wp_filter_kses($content);
+    return $content;
+}
+/* EOF settingPanel.php */
+/* ./wp-content/plugins/replymail/settingPanel.php */
